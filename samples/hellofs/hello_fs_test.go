@@ -22,9 +22,9 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/jacobsa/fuse/fusetesting"
-	"github.com/jacobsa/fuse/samples"
-	"github.com/jacobsa/fuse/samples/hellofs"
+	"github.com/manvalls/fuse/fusetesting"
+	"github.com/manvalls/fuse/samples"
+	"github.com/manvalls/fuse/samples/hellofs"
 	. "github.com/jacobsa/oglematchers"
 	. "github.com/jacobsa/ogletest"
 )

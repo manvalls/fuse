@@ -20,7 +20,7 @@ import (
 	"regexp"
 	"syscall"
 
-	"github.com/jacobsa/fuse/fuseops"
+	"github.com/manvalls/fuse/fuseops"
 	. "github.com/jacobsa/ogletest"
 )
 

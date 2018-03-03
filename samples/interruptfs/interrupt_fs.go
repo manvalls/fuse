@@ -20,9 +20,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/jacobsa/fuse"
-	"github.com/jacobsa/fuse/fuseops"
-	"github.com/jacobsa/fuse/fuseutil"
+	"github.com/manvalls/fuse"
+	"github.com/manvalls/fuse/fuseops"
+	"github.com/manvalls/fuse/fuseutil"
 )
 
 var rootAttrs = fuseops.InodeAttributes{
