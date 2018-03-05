@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/user"
 	"path"
 	"reflect"
@@ -28,13 +29,13 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/jacobsa/oglematchers"
+	. "github.com/jacobsa/ogletest"
+	"github.com/kahing/go-xattr"
 	"github.com/manvalls/fuse"
 	"github.com/manvalls/fuse/fusetesting"
 	"github.com/manvalls/fuse/samples"
 	"github.com/manvalls/fuse/samples/memfs"
-	. "github.com/jacobsa/oglematchers"
-	. "github.com/jacobsa/ogletest"
-	"github.com/kahing/go-xattr"
 )
 
 func TestMemFS(t *testing.T) { RunTests(t) }
@@ -97,6 +98,14 @@ type memFSTest struct {
 
 func (t *memFSTest) SetUp(ti *TestInfo) {
 	t.Server = memfs.NewMemFS(currentUid(), currentGid())
+
+	// If the OS is linux, we need to specify allow_other for
+	// sudo to work
+	if os.Getenv("TRAVIS_OS_NAME") == "linux" {
+		t.SampleTest.MountConfig.Options = make(map[string]string)
+		t.SampleTest.MountConfig.Options["allow_other"] = ""
+	}
+
 	t.SampleTest.SetUp(ti)
 }
 
@@ -1010,6 +1019,29 @@ func (t *MemFSTest) Chmod() {
 	fi, err := os.Stat(fileName)
 	AssertEq(nil, err)
 	ExpectEq(0754, fi.Mode())
+}
+
+func (t *MemFSTest) Chown() {
+	var err error
+	fileName := path.Join(t.Dir, "foo")
+
+	// Create a file.
+	err = ioutil.WriteFile(fileName, []byte(""), 0600)
+	AssertEq(nil, err)
+
+	// Chown it.
+	err = exec.Command("sudo", "chown", "50:51", fileName).Run()
+	AssertEq(nil, err)
+
+	// Stat it.
+	fi, err := os.Stat(fileName)
+	AssertEq(nil, err)
+	stat, ok := fi.Sys().(*syscall.Stat_t)
+
+	if ok {
+		ExpectEq(50, stat.Uid)
+		ExpectEq(51, stat.Gid)
+	}
 }
 
 func (t *MemFSTest) Chtimes() {
