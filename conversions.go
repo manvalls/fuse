@@ -53,13 +53,13 @@ func convertInMessage(
 		}
 
 		o = &fuseops.LookUpInodeOp{
-			Parent: fuseops.InodeID(inMsg.Header().Nodeid),
+			Parent: fuseops.InodeID(header.Nodeid),
 			Name:   string(buf[:n-1]),
 		}
 
 	case fusekernel.OpGetattr:
 		o = &fuseops.GetInodeAttributesOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 		}
 
 	case fusekernel.OpSetattr:
@@ -71,7 +71,7 @@ func convertInMessage(
 		}
 
 		to := &fuseops.SetInodeAttributesOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 		}
 		o = to
 
@@ -112,7 +112,7 @@ func convertInMessage(
 		}
 
 		o = &fuseops.ForgetInodeOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 			N:     in.Nlookup,
 		}
 
@@ -132,7 +132,7 @@ func convertInMessage(
 		name = name[:i]
 
 		o = &fuseops.MkDirOp{
-			Parent: fuseops.InodeID(inMsg.Header().Nodeid),
+			Parent: fuseops.InodeID(header.Nodeid),
 			Name:   string(name),
 
 			// On Linux, vfs_mkdir calls through to the inode with at most
@@ -162,7 +162,7 @@ func convertInMessage(
 		name = name[:i]
 
 		o = &fuseops.MkNodeOp{
-			Parent: fuseops.InodeID(inMsg.Header().Nodeid),
+			Parent: fuseops.InodeID(header.Nodeid),
 			Name:   string(name),
 			Mode:   convertFileMode(in.Mode),
 			Uid:    header.Uid,
@@ -185,11 +185,12 @@ func convertInMessage(
 		name = name[:i]
 
 		o = &fuseops.CreateFileOp{
-			Parent: fuseops.InodeID(inMsg.Header().Nodeid),
+			Parent: fuseops.InodeID(header.Nodeid),
 			Name:   string(name),
 			Mode:   convertFileMode(in.Mode),
 			Uid:    header.Uid,
 			Gid:    header.Gid,
+			Flags:  in.Flags,
 		}
 
 	case fusekernel.OpSymlink:
@@ -207,7 +208,7 @@ func convertInMessage(
 		newName, target := names[0:i], names[i+1:len(names)-1]
 
 		o = &fuseops.CreateSymlinkOp{
-			Parent: fuseops.InodeID(inMsg.Header().Nodeid),
+			Parent: fuseops.InodeID(header.Nodeid),
 			Name:   string(newName),
 			Target: string(target),
 			Uid:    header.Uid,
@@ -240,7 +241,7 @@ func convertInMessage(
 		oldName, newName := names[:i], names[i+1:len(names)-1]
 
 		o = &fuseops.RenameOp{
-			OldParent: fuseops.InodeID(inMsg.Header().Nodeid),
+			OldParent: fuseops.InodeID(header.Nodeid),
 			OldName:   string(oldName),
 			NewParent: fuseops.InodeID(in.Newdir),
 			NewName:   string(newName),
@@ -255,7 +256,7 @@ func convertInMessage(
 		}
 
 		o = &fuseops.UnlinkOp{
-			Parent: fuseops.InodeID(inMsg.Header().Nodeid),
+			Parent: fuseops.InodeID(header.Nodeid),
 			Name:   string(buf[:n-1]),
 		}
 
@@ -268,18 +269,26 @@ func convertInMessage(
 		}
 
 		o = &fuseops.RmDirOp{
-			Parent: fuseops.InodeID(inMsg.Header().Nodeid),
+			Parent: fuseops.InodeID(header.Nodeid),
 			Name:   string(buf[:n-1]),
 		}
 
 	case fusekernel.OpOpen:
+		type input fusekernel.OpenIn
+		in := (*input)(inMsg.Consume(unsafe.Sizeof(input{})))
+		if in == nil {
+			err = errors.New("Corrupt OpOpen")
+			return
+		}
+
 		o = &fuseops.OpenFileOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
+			Flags: in.Flags,
 		}
 
 	case fusekernel.OpOpendir:
 		o = &fuseops.OpenDirOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 		}
 
 	case fusekernel.OpRead:
@@ -290,7 +299,7 @@ func convertInMessage(
 		}
 
 		to := &fuseops.ReadFileOp{
-			Inode:  fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode:  fuseops.InodeID(header.Nodeid),
 			Handle: fuseops.HandleID(in.Fh),
 			Offset: int64(in.Offset),
 		}
@@ -316,7 +325,7 @@ func convertInMessage(
 		}
 
 		to := &fuseops.ReadDirOp{
-			Inode:  fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode:  fuseops.InodeID(header.Nodeid),
 			Handle: fuseops.HandleID(in.Fh),
 			Offset: fuseops.DirOffset(in.Offset),
 		}
@@ -372,7 +381,7 @@ func convertInMessage(
 		}
 
 		o = &fuseops.WriteFileOp{
-			Inode:  fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode:  fuseops.InodeID(header.Nodeid),
 			Handle: fuseops.HandleID(in.Fh),
 			Data:   buf,
 			Offset: int64(in.Offset),
@@ -387,7 +396,7 @@ func convertInMessage(
 		}
 
 		o = &fuseops.SyncFileOp{
-			Inode:  fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode:  fuseops.InodeID(header.Nodeid),
 			Handle: fuseops.HandleID(in.Fh),
 		}
 
@@ -400,13 +409,13 @@ func convertInMessage(
 		}
 
 		o = &fuseops.FlushFileOp{
-			Inode:  fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode:  fuseops.InodeID(header.Nodeid),
 			Handle: fuseops.HandleID(in.Fh),
 		}
 
 	case fusekernel.OpReadlink:
 		o = &fuseops.ReadSymlinkOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 		}
 
 	case fusekernel.OpStatfs:
@@ -459,7 +468,7 @@ func convertInMessage(
 		}
 
 		o = &fuseops.CreateLinkOp{
-			Parent: fuseops.InodeID(inMsg.Header().Nodeid),
+			Parent: fuseops.InodeID(header.Nodeid),
 			Name:   string(name),
 			Target: fuseops.InodeID(in.Oldnodeid),
 		}
@@ -473,7 +482,7 @@ func convertInMessage(
 		}
 
 		o = &fuseops.RemoveXattrOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 			Name:  string(buf[:n-1]),
 		}
 
@@ -494,7 +503,7 @@ func convertInMessage(
 		name = name[:i]
 
 		to := &fuseops.GetXattrOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 			Name:  string(name),
 		}
 		o = to
@@ -520,7 +529,7 @@ func convertInMessage(
 		}
 
 		to := &fuseops.ListXattrOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 		}
 		o = to
 
@@ -559,7 +568,7 @@ func convertInMessage(
 		name, value := payload[:i], payload[i+1:len(payload)]
 
 		o = &fuseops.SetXattrOp{
-			Inode: fuseops.InodeID(inMsg.Header().Nodeid),
+			Inode: fuseops.InodeID(header.Nodeid),
 			Name:  string(name),
 			Value: value,
 			Flags: in.Flags,
@@ -567,8 +576,8 @@ func convertInMessage(
 
 	default:
 		o = &unknownOp{
-			OpCode: inMsg.Header().Opcode,
-			Inode:  fuseops.InodeID(inMsg.Header().Nodeid),
+			OpCode: header.Opcode,
+			Inode:  fuseops.InodeID(header.Nodeid),
 		}
 	}
 

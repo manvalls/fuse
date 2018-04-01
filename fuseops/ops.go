@@ -287,8 +287,9 @@ type CreateFileOp struct {
 	Parent InodeID
 
 	// The name of the child to create, and the mode with which to create it.
-	Name string
-	Mode os.FileMode
+	Name  string
+	Mode  os.FileMode
+	Flags uint32
 
 	// The uid and gid of the parent process
 	Uid uint32
@@ -577,6 +578,8 @@ type ReleaseDirHandleOp struct {
 type OpenFileOp struct {
 	// The ID of the inode to be opened.
 	Inode InodeID
+
+	Flags uint32
 
 	// An opaque ID that will be echoed in follow-up calls for this file using
 	// the same struct file in the kernel. In practice this usually means
